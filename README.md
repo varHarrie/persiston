@@ -5,16 +5,53 @@ Simple persistent store with database-like API.
 ## Usage
 
 ```javascript
-const adapter = new FileAdapter('./data.json');
+const adapter = new FileAdapter('./data.json')
+const store = new Persiston({ adapter })
 
-const collection = new Collection();
-await collection.connect(adapter);
+store.load()
+  .then(() => store.collection('users').insert({ name: 'foo' }))
+  .then(() => store.collection('users').findOne())
+  .then((user) => console.log(user)) // { name: 'foo' }
+```
 
-await collection.insert({ name: 'foo' });
-console.log(await collection.findOne()); // { name: 'foo' }
+With type declaration:
+
+```typescript
+interface User {
+  name: string
+}
+
+class Store extends Persiston {
+  users = this.collection<User>('users')
+  pets = this.collection<User>('pets')
+}
+
+const adapter = new FileAdapter('./data.json')
+const store = new Store({ adapter })
+
+store.load()
+  .then(() => store.collection('users').insert({ name: 'foo' }))
+  .then(() => store.collection('users').findOne())
+  .then((user) => console.log(user)) // { name: 'foo' }
 ```
 
 ## APIs
+
+### Persiston
+
+- `store.load(): Promise<Persiston>`
+
+Loads data by adapter. It should be called before all collection operations.
+
+- `store.save(): Promise<Persiston>`
+
+Saves data by adapter. You probably won't call it by yourself.
+
+- `store.collection(): Collection<T>`
+
+Gets a collection object.
+
+### Collection
 
 - `collection.find(query?: Query<T>, fields?: string[]): Promise<T[]>`
 

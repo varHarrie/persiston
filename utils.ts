@@ -1,3 +1,5 @@
+import { PlainObject } from "./types.ts";
+
 export async function isFileExisted(filePath: string) {
   try {
     const info = await Deno.stat(filePath);
@@ -12,7 +14,7 @@ export async function isFileExisted(filePath: string) {
 }
 
 export function deepGet(
-  obj: Record<string, unknown>,
+  obj: PlainObject,
   path: number | string | string[]
 ): unknown {
   if (!obj || typeof obj !== "object") return undefined;
@@ -24,10 +26,10 @@ export function deepGet(
   if (!obj || !first) return undefined;
   if (!parts.length) return obj[first];
 
-  return deepGet(obj[first] as Record<string, unknown>, parts);
+  return deepGet(obj[first] as PlainObject, parts);
 }
 
-export function match<T extends Record<string, unknown>>(
+export function match<T extends PlainObject>(
   obj: T,
   conditions: [string, unknown][]
 ) {
@@ -56,7 +58,7 @@ export function computeKeys<T>(obj: T, keys?: string[]) {
   return included.length ? included : allKeys.filter((key) => !excluded[key]);
 }
 
-function isObject(obj: unknown): obj is Record<string, unknown> {
+function isObject(obj: unknown): obj is PlainObject {
   return !!obj && typeof obj === "object";
 }
 
@@ -80,7 +82,7 @@ export function deepCopy<T>(obj: T, fields?: string[]): T {
 
   if (isObject(obj)) {
     const keys = computeKeys(obj, fields);
-    const result: Record<string, unknown> = {};
+    const result: PlainObject = {};
 
     keys.forEach((key) => {
       result[key] = deepCopy(obj[key]);

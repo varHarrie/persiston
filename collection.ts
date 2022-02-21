@@ -1,20 +1,23 @@
-import { Adapter } from "./adapter.ts";
+import { Persiston } from "./persiston.ts";
+import { PlainObject, Query } from "./types.ts";
 import { deepCopy, match } from "./utils.ts";
 
-type Connection<T> = {
-  adapter: Adapter<T>;
-};
+export class Collection<T extends PlainObject = PlainObject> {
+  #store: Persiston;
 
-export type Query<T> = {
-  [key in keyof T]?: unknown;
-};
+  #name: string;
 
-export class Collection<T extends Record<string, unknown>> {
-  #connected: Connection<T> | undefined = undefined;
-  #list: T[] = [];
+  get #list() {
+    if (!this.#store.data[this.#name]) {
+      this.#store.data[this.#name] = [];
+    }
 
-  async #save() {
-    await this.#connected?.adapter.write(this.#list);
+    return this.#store.data[this.#name] as T[];
+  }
+
+  constructor(store: Persiston, name: string) {
+    this.#store = store;
+    this.#name = name;
   }
 
   #query(query?: Query<T>): T[] {
@@ -31,11 +34,6 @@ export class Collection<T extends Record<string, unknown>> {
     return conditions.length
       ? this.#list.find((item) => match(item, conditions))
       : this.#list[0];
-  }
-
-  async connect(adapter: Adapter<T>) {
-    this.#connected = { adapter };
-    this.#list = await this.#connected.adapter.read();
   }
 
   find(query?: Query<T>, fields?: string[]) {
@@ -59,7 +57,7 @@ export class Collection<T extends Record<string, unknown>> {
       count += 1;
     });
 
-    await this.#save();
+    await this.#store.save();
     return count;
   }
 
@@ -70,7 +68,7 @@ export class Collection<T extends Record<string, unknown>> {
       Object.assign(item, changes);
     });
 
-    await this.#save();
+    await this.#store.save();
     return targets.length;
   }
 
@@ -80,7 +78,7 @@ export class Collection<T extends Record<string, unknown>> {
 
     Object.assign(target, changes);
 
-    await this.#save();
+    await this.#store.save();
     return 1;
   }
 
@@ -91,7 +89,7 @@ export class Collection<T extends Record<string, unknown>> {
       const count = this.#list.length;
       this.#list.length = 0;
 
-      if (count) await this.#save();
+      if (count) await this.#store.save();
       return count;
     }
 
@@ -105,7 +103,7 @@ export class Collection<T extends Record<string, unknown>> {
       this.#list.splice(index, 1);
     });
 
-    if (indexes.length) await this.#save();
+    if (indexes.length) await this.#store.save();
     return indexes.length;
   }
 
@@ -116,7 +114,7 @@ export class Collection<T extends Record<string, unknown>> {
     if (index === -1) return 0;
 
     this.#list.splice(index, 1);
-    await this.#save();
+    await this.#store.save();
 
     return 1;
   }

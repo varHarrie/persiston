@@ -1,48 +1,40 @@
+import { Collections } from "./types.ts";
 import { isFileExisted } from "./utils.ts";
 
-export interface Adapter<T> {
-  read: () => Promise<T[]>;
-  write: (data: T[]) => Promise<void>;
+export interface Adapter {
+  read: () => Promise<Collections | undefined>;
+  write: (data: Collections) => Promise<void>;
 }
 
-export type FileAdapterOptions<T> = {
-  getInitialData?: () => T[];
-  serialize?: (data: T[]) => Promise<string>;
-  deserialize?: (data: string) => Promise<T[]>;
+export type FileAdapterOptions = {
+  serialize?: (data: Collections) => Promise<string>;
+  deserialize?: (raw: string) => Promise<Collections>;
 };
 
-export class FileAdapter<T = unknown> implements Adapter<T> {
+export class FileAdapter implements Adapter {
   #filePath: string;
 
-  #getInitialData: () => T[];
+  #serialize: (data: Collections) => Promise<string>;
 
-  #serialize: (data: T[]) => Promise<string>;
+  #deserialize: (raw: string) => Promise<Collections>;
 
-  #deserialize: (data: string) => Promise<T[]>;
-
-  static getInitialData() {
-    return [];
-  }
-
-  static serialize(data: unknown[]) {
+  static serialize(data: Collections) {
     return Promise.resolve(JSON.stringify(data));
   }
 
-  static deserialize(data: string) {
-    return Promise.resolve(JSON.parse(data));
+  static deserialize(raw: string) {
+    return Promise.resolve(JSON.parse(raw));
   }
 
-  constructor(filePath: string, options: FileAdapterOptions<T>) {
+  constructor(filePath: string, options: FileAdapterOptions = {}) {
     this.#filePath = filePath;
-    this.#getInitialData = options.getInitialData ?? FileAdapter.getInitialData;
     this.#serialize = options.serialize ?? FileAdapter.serialize;
     this.#deserialize = options.deserialize ?? FileAdapter.deserialize;
   }
 
   async read() {
     if (!(await isFileExisted(this.#filePath))) {
-      const initialData = this.#getInitialData();
-      await this.write(initialData);
+      return undefined;
     }
 
     try {
@@ -55,7 +47,7 @@ export class FileAdapter<T = unknown> implements Adapter<T> {
     }
   }
 
-  async write(data: T[]) {
+  async write(data: Collections) {
     try {
       const json = await this.#serialize(data);
       await Deno.writeTextFile(this.#filePath, json);
